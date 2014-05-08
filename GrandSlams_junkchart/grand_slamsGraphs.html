@@ -1,0 +1,363 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+
+
+
+        <meta charset="utf-8">
+        <title>Grand Slam results</title>
+        <h2 style="font-family:sans-serif;">Grand Slam results for Nadal, Djokovic and Federer, past 8 years</h2>
+
+
+        <div style="font-family:sans-serif;" class = "bars" id="chart-bar-slams"> <br/><span># of Grand Slams Played</span><br/></div>
+
+        <div style="font-family:sans-serif;" class = "bars" id="chart-bar-champs"> <br/><span># of Grand Slams Won</span><br/></div>
+
+        <div style="font-family:sans-serif;" class = "bars" id="chart-bar-score"><br/><span>Overall Grand Slam Performance "Score"</span><br/></div>
+
+        <div style="font-family:sans-serif;" class = "lines" id="line-chart-years"> <br/><span>Performance "Score" trends</span><br/></div>
+
+        <div style="font-family:sans-serif;" class = "bars" id="bar-chart-champs"><br/>Stacked graph, # of slams won<br/></div>
+
+        <div style="font-family:sans-serif;" class = "bars" id="bar-chart-slamsbyyear-fed"><br/><span>Federer's Slams Won</span><br/></div>
+        <div style="font-family:sans-serif;" class = "bars" id="bar-chart-slamsbyyear-nad"><br/><span>Nadal's Slams Won</span><br/></div>
+        <div style="font-family:sans-serif;" class = "bars" id="bar-chart-slamsbyyear-djo"><br/><span>Djokovic's Slams Won</span><br/></div>
+
+        <div style="font-family:sans-serif;" class = "pie" id="chart-pie-surface-fed"> <br/><span>Federer's Slams Won by Surface</span><br/></div>
+        <div style="font-family:sans-serif;" class = "pie" id="chart-pie-surface-nad"> <br/><span>Nadal's Slams Won by Surface</span><br/></div>
+        <div style="font-family:sans-serif;" class = "pie" id="chart-pie-surface-djo"> <br/><span>Djokovic's Slams Won by Surface</span><br/></div>
+
+        <div style="font-family:sans-serif;" class = "bars" id="chart-bar-surface"><br/>Total # matches per surface<br/></div>
+
+        </div>
+        <br/><br/><br/><br/>
+
+        <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.6.2.min.js"></script>
+        <script type="text/javascript" src="../crossfilter-1.3.7/crossfilter.min.js"></script>
+        <script type="text/javascript" src="../dc.js-1.6.0/dc.min.js"></script>
+
+        <script type="text/javascript" src="../jquery.tipsy.js"></script>
+        <script type="text/javascript" src="tennis_data.js"></script>
+        <link href="../tipsy.css" rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" type="text/css" href="../dc.js-1.6.0/dc.css" media="screen" />
+
+        <style>
+
+
+        .bars {
+            margin-left: 20px;
+            margin-right: 20px;
+            margin-bottom: 10px;
+
+        }
+        .lines {
+            margin-left: 20px;
+            margin-right: 20px;
+            margin-bottom: 10px;
+
+        }
+        .bars text{
+            font-size: 10px;
+            font-family: sans-serif;
+        }
+
+        .bars path {
+            cursor: pointer;
+            stroke-width: 0.1;
+        }
+
+        .pie {
+            margin-left: 20px;
+            margin-right: 20px;
+            margin-bottom: 10px;
+
+
+        }
+
+        .pie text{
+            font-size: 10px;
+            font-family: sans-serif;
+        }
+
+        .pie path {
+            cursor: pointer;
+            stroke: white;
+            stroke-width: 1;
+        }
+
+        </style>
+    </head>
+    <body>
+        <script type="text/javascript">
+        ////////////////////////These variables are global//////////////////////////
+        var w = 400;
+        var h = 500;
+
+        var numRows = 9
+
+        var rowSpace = 48.8888 //(h - 2*gap) / numRows
+        var gap = 60
+
+        var rows = [];
+        for (var i = 0; i < numRows-1; i++) {
+            rows.push((i+1)*rowSpace)
+        }
+
+        var numCols = 7
+        var colSpace = (w - 2*gap)/numCols
+
+        var cols = [];
+
+        for (var i = 0; i < numCols-1; i++) {
+            cols.push((i+1)*colSpace);
+        }
+
+        var rounds = ['R1', 'R2', 'R3', 'R4', 'Q', 'S', 'F', 'C']
+        var years = ['2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013']
+
+        ////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+        aus_open.forEach(function(d){
+            d.tournament = 'aus',
+            d.surface = 'hard'
+        })
+
+        fre_open.forEach(function(d){
+            d.tournament = 'fre',
+            d.surface = 'clay'
+        })
+
+        wimbledon.forEach(function(d){
+            d.tournament = 'wim',
+            d.surface = 'grass'
+        })
+
+        us_open.forEach(function(d){
+            d.tournament = 'uso',
+            d.surface = 'hard'
+        })
+
+        all_data = aus_open;
+
+        all_data = all_data.concat(fre_open);
+        all_data = all_data.concat(wimbledon);
+        all_data = all_data.concat(us_open)
+
+        var ndx = crossfilter(all_data);
+
+        // surface dimension
+        var surfaceDim = ndx.dimension(function(d) {return d.surface});
+        var surfaceCount = surfaceDim.group().reduceCount(function(d) {return d.surface;})
+
+        var surfaceBar = dc.rowChart("#chart-bar-surface")
+            .width(500).height(200)
+            .dimension(surfaceDim)
+            .group(surfaceCount)
+            .transitionDuration(1000)
+            //.x(d3.scale.ordinal().domain(['clay', 'grass', 'hard']))
+            //.xUnits(dc.units.ordinal)
+            //.brushOn(false)
+            //.yAxisLabel("count")
+            //.xAxisLabel("surface")
+            .colors(["peru", "darkkhaki", "lightsteelblue"]);
+
+        var surfacePie = dc.pieChart("#chart-pie-surface")
+            .width(150).height(150)
+            .dimension(surfaceDim)
+            .group(surfaceCount)
+            .innerRadius(25)
+            .transitionDuration(500);
+            //.colors(["red", "green", "blue"]);
+
+
+
+        var playerDim = ndx.dimension(function(d) {return d.name});
+        var score = playerDim.group().reduceSum(function(d) {return +d.round})
+
+        var scoreBar = dc.rowChart("#chart-bar-score")
+            .width(500).height(200)
+            .dimension(playerDim)
+            .group(score)
+            .transitionDuration(1000)
+            .title(function(d) {return d.value})
+            //.x(d3.scale.ordinal().domain(['R. Nadal', 'N. Djokovic', 'R. Federer']))
+            //.xUnits(dc.units.ordinal)
+            //.brushOn(false)
+            //.yAxisLabel("score")
+            .colors(["green", "orange", "steelblue"])
+            .on("click", function(d){
+                svga.selectAll("circle").remove()
+                ausDots(d.name);});
+
+
+        var champs = playerDim.group().reduceSum(function(d) {if (d.round==="8") {return 1} else { return 0}})
+
+        var scoreBar = dc.rowChart("#chart-bar-champs")
+            .width(500).height(200)
+            .dimension(playerDim)
+            .group(champs)
+            .transitionDuration(1000)
+            .title(function(d) {return d.value})
+            //.x(d3.scale.ordinal().domain(['R. Nadal', 'N. Djokovic', 'R. Federer']))
+            //.xUnits(dc.units.ordinal)
+            //.brushOn(false)
+            //.yAxisLabel("score")
+            .colors(["green", "orange", "steelblue"])
+            .on("click", function(d){
+                svga.selectAll("circle").remove()
+                ausDots(d.name);});
+
+        // year dimension
+
+        var yearDim = ndx.dimension(function(d) {return d.year});
+
+        var fedYearScore = yearDim.group().reduceSum(function(d) {if (d.name==="R. Federer") {return d.round} else{ return 0}})
+        var nadYearScore = yearDim.group().reduceSum(function(d) {if (d.name==="R. Nadal") {return d.round} else{ return 0}})
+        var djoYearScore = yearDim.group().reduceSum(function(d) {if (d.name==="N. Djokovic") {return d.round} else{ return 0}})
+
+        var scorePerYear = yearDim.group().reduceSum(function(d) {return +d.round})
+
+        var lineChartDate = dc.lineChart("#line-chart-years");
+
+        lineChartDate
+            .width(600)
+            .height(200)
+            .margins({top: 30, right: 50, bottom: 30, left: 30})
+            .dimension(yearDim)
+            .group(nadYearScore, "Nadal")
+            .stack(fedYearScore, "Federer")
+            .stack(djoYearScore, "Djokovic")
+            .brushOn(true)
+            .title(function (d) {
+                return d.value;
+            })
+            .x(d3.scale.ordinal().domain(["2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013"]))
+            .xUnits(dc.units.ordinal)
+            .elasticY(true)
+            .renderArea(true)
+            .legend(dc.legend().x(410).y(0).itemHeight(13).gap(5))
+            .xAxis().ticks(5);
+
+
+        // # grand slams played
+
+        var numSlams = playerDim.group().reduceCount(function(d) {return d.name})
+
+        var slamsBar = dc.rowChart("#chart-bar-slams")
+            .width(500).height(200)
+            .dimension(playerDim)
+            .group(numSlams)
+            .transitionDuration(1000)
+            .title(function(d) {return d.value})
+            .colors(["green", "orange", "steelblue"])
+            .on("click", function(d){
+                svga.selectAll("circle").remove()
+                ausDots(d.name);});
+
+        var champsBar = dc.barChart("#bar-chart-champs");
+        champsBar.width(500)
+                .height(200)
+                .margins({top: 30, right: 50, bottom: 30, left: 30})
+                .dimension(playerDim)
+                .group(numSlams, "# played")
+                .stack(champs, "# won")
+                .elasticY(true)
+                .gap(50)
+                .x(d3.scale.ordinal().domain(['R. Nadal', 'N. Djokovic', 'R. Federer']))
+                .xUnits(dc.units.ordinal)
+                .legend(dc.legend().x(350).y(10).itemHeight(13).gap(5))
+                .xAxis().ticks(5);
+
+        var fedYearPlayed = yearDim.group().reduceSum( function(d) {if (d.name==="R. Federer") {return 1} else {return 0} })
+        var fedYearWon = yearDim.group().reduceSum( function(d) {if (d.name==="R. Federer" && d.round==="8") {return 1} else {return 0} })
+
+        var nadYearPlayed = yearDim.group().reduceSum( function(d) {if (d.name==="R. Nadal") {return 1} else {return 0} })
+        var nadYearWon = yearDim.group().reduceSum( function(d) {if (d.name==="R. Nadal" && d.round==="8") {return 1} else {return 0} })
+
+        var djoYearPlayed = yearDim.group().reduceSum( function(d) {if (d.name==="N. Djokovic") {return 1} else {return 0} })
+        var djoYearWon = yearDim.group().reduceSum( function(d) {if (d.name==="N. Djokovic" && d.round==="8") {return 1} else {return 0} })
+
+        var fedSlamsYearBar = dc.barChart("#bar-chart-slamsbyyear-fed");
+        fedSlamsYearBar.width(500)
+                .height(200)
+                .margins({top: 30, right: 50, bottom: 30, left: 30})
+                .dimension(yearDim)
+                .group(fedYearPlayed, "# played")
+                .stack(fedYearWon, "# won")
+                .elasticY(true)
+                .gap(20)
+                .x(d3.scale.ordinal().domain(["2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013"]))
+                .xUnits(dc.units.ordinal)
+                .legend(dc.legend().x(400).y(10).itemHeight(13).gap(5))
+                .xAxis().ticks(5);
+
+        var nadSlamsYearBar = dc.barChart("#bar-chart-slamsbyyear-nad");
+        nadSlamsYearBar.width(500)
+                .height(200)
+                .margins({top: 30, right: 50, bottom: 30, left: 30})
+                .dimension(yearDim)
+                .group(nadYearPlayed, "# played")
+                .stack(nadYearWon, "# won")
+                .elasticY(true)
+                .gap(20)
+                .x(d3.scale.ordinal().domain(["2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013"]))
+                .xUnits(dc.units.ordinal)
+                .legend(dc.legend().x(400).y(10).itemHeight(13).gap(5))
+                .xAxis().ticks(5);
+
+        var djoSlamsYearBar = dc.barChart("#bar-chart-slamsbyyear-djo");
+        djoSlamsYearBar.width(500)
+                .height(200)
+                .margins({top: 30, right: 50, bottom: 30, left: 30})
+                .dimension(yearDim)
+                .group(djoYearPlayed, "# played")
+                .stack(djoYearWon, "# won")
+                .elasticY(true)
+                .gap(20)
+                .x(d3.scale.ordinal().domain(["2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013"]))
+                .xUnits(dc.units.ordinal)
+                .legend(dc.legend().x(400).y(10).itemHeight(13).gap(5))
+                .xAxis().ticks(5);
+
+        fedSlamsCount = surfaceDim.group().reduceSum(function(d) {if (d.name==="R. Federer" && d.round==="8") {return 1} else {return 0}} )
+        nadSlamsCount = surfaceDim.group().reduceSum(function(d) {if (d.name==="R. Nadal" && d.round==="8") {return 1} else {return 0}} )
+        djoSlamsCount = surfaceDim.group().reduceSum(function(d) {if (d.name==="N. Djokovic" && d.round==="8") {return 1} else {return 0}} )
+
+        var fedSurfacePie = dc.pieChart("#chart-pie-surface-fed")
+            .width(200).height(200)
+            .dimension(surfaceDim)
+            .group(fedSlamsCount)
+            .innerRadius(40)
+            .transitionDuration(1000)
+            .colors(["peru", "darkkhaki", "lightsteelblue"]);
+
+        var nadSurfacePie = dc.pieChart("#chart-pie-surface-nad")
+            .width(200).height(200)
+            .dimension(surfaceDim)
+            .group(nadSlamsCount)
+            .innerRadius(40)
+            .transitionDuration(1000)
+            .colors(["peru", "darkkhaki", "lightsteelblue"]);
+
+        var djoSurfacePie = dc.pieChart("#chart-pie-surface-djo")
+            .width(200).height(200)
+            .dimension(surfaceDim)
+            .group(djoSlamsCount)
+            .innerRadius(40)
+            .transitionDuration(1000)
+            .colors(["peru", "darkkhaki", "lightsteelblue"]);
+
+        dc.renderAll()
+
+        </script>
+
+    </body>
+</html>

@@ -1,0 +1,786 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+
+        <meta charset="utf-8">
+        <title>Grand Slam results</title>
+        <h2 style="font-family:sans-serif;">Grand Slam results for Nadal, Djokovic and Federer, past 8 years</h2>
+        <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.6.2.min.js"></script>
+        <script type="text/javascript" src="../crossfilter-1.3.7/crossfilter.min.js"></script>
+        <script type="text/javascript" src="../dc.js-1.6.0/dc.min.js"></script>
+
+        <script type="text/javascript" src="../jquery.tipsy.js"></script>
+        <script type="text/javascript" src="tennis_data.js"></script>
+        <link href="../tipsy.css" rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" type="text/css" href="../dc.js-1.6.0/dc.css" media="screen" />
+
+        <style>
+
+
+
+        </style>
+    </head>
+    <body>
+        <script type="text/javascript">
+        ////////////////////////These variables are global//////////////////////////
+        var w = 400;
+        var h = 500;
+
+        var numRows = 9
+
+        var rowSpace = 48.8888 //(h - 2*gap) / numRows
+        var gap = 60
+
+        var rows = [];
+        for (var i = 0; i < numRows-1; i++) {
+            rows.push((i+1)*rowSpace)
+        }
+
+        var numCols = 7
+        var colSpace = (w - 2*gap)/numCols
+
+        var cols = [];
+
+        for (var i = 0; i < numCols-1; i++) {
+            cols.push((i+1)*colSpace);
+        }
+
+        var rounds = ['R1', 'R2', 'R3', 'R4', 'Q', 'S', 'F', 'C']
+        var years = ['2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013']
+
+        ////////////////////////////////////////////////////////////////////////////
+
+
+        var svga = d3.select("body")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", h);
+
+        var lineh = svga.selectAll("lineh")
+                    .data(rows)
+                    .enter()
+                    .append("line");
+
+        var linev = svga.selectAll("linev")
+                    .data(cols)
+                    .enter()
+                    .append("line");
+
+        var circles_aus = svga.selectAll("circles_aus")
+                    .data(aus_open)
+                    .enter()
+                    .append("circle");
+
+        var roundLabels = svga.selectAll("roundLabels")
+                    .data(rounds)
+                    .enter()
+                    .append("text");
+
+        var yearLabels = svga.selectAll("yearLabels")
+                .data(years)
+                .enter()
+                .append("text");
+
+
+        lineh.attr("x1", gap)
+            .attr("y1", function(d) {
+                return d;
+            })
+            .attr("x2", w-gap)
+            .attr("y2", function(d) {
+                return d;
+            })
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+        linev.attr("x1", function(d) {
+            return d+gap;
+        })
+            .attr("y1", h-gap*1.25)
+            .attr("x2", function(d) {
+                return d+gap;
+            })
+            .attr("y2", gap/4)
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+
+        var ausx = crossfilter(aus_open)
+
+        var ausxPlayerDim = ausx.dimension(function(d) {return d.name})
+
+
+        function ausDots(filter){
+
+            var circles_aus = svga.selectAll("circles_aus")
+                            .append("circle")
+
+            ausxPlayerDim.filterAll()
+
+            if (filter != null){
+                ausxPlayerDim.filter(filter)
+            }
+
+            circles_aus
+                .data(ausxPlayerDim.top(20))
+                .enter()
+                .append("circle")
+                .attr("cx", function(d, i) {
+
+                return gap+(d.round-1 % 7)*colSpace;
+              })
+           .attr("cy", function(d, i){
+                if (d.year == 2006) {
+                   return rows[0]
+                }
+                else if (d.year == 2007) {
+                   return rows[1]
+                }
+                else if (d.year == 2008) {
+                   return rows[2]
+                }
+                else if (d.year == 2009) {
+                   return rows[3]
+                }
+                else if (d.year == 2010) {
+                   return rows[4]
+                }
+                else if (d.year == 2011) {
+                   return rows[5]
+                }
+                else if (d.year == 2012) {
+                   return rows[6]
+                }
+                else {
+                    return rows[7]
+                }
+           })
+            .attr("r", 10)
+            .attr("fill", function(d){
+                return d.color;
+                })
+            .on("mouseover", function(d) {
+                    d3.select(this)
+                        .style('fill', d.colorFill);
+                })
+            .on("mouseout", function(d) {
+                    d3.select(this)
+                        .style('fill', d.color);
+                })
+            .append("svg:title")
+                .text(function(d) { return d.x; });
+
+
+        $('svg circle').tipsy({
+            gravity: 'w',
+            html: true,
+            title: function() {
+              var d = this.__data__;
+              return d.name + ' ' + d.result;
+            }
+          });
+    }
+
+
+        roundLabels.attr("x", function(d, i){
+                return gap + i*colSpace;
+            })
+            .attr("y", h - gap)
+            .attr("text-anchor", "middle")
+            .style("font-size", "10px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        yearLabels.attr("x", gap/2 - 8)
+            .attr("y", function(d, i) {
+                return gap + i*rowSpace - 8;
+            })
+            .attr("text-anchor", "middle")
+            .style("font-size", "12px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        svga.append("text")
+            .attr("x", (w / 2))
+            .attr("y", h - gap/2)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .style("font-family", "sans-serif")
+            .text("Australian Open");
+
+
+        //french open svg
+
+        var svgb = d3.select("body")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", h);
+
+        var lineh = svgb.selectAll("lineh")
+                    .data(rows)
+                    .enter()
+                    .append("line");
+
+        var linev = svgb.selectAll("linev")
+                    .data(cols)
+                    .enter()
+                    .append("line");
+
+        var circles_fre = svgb.selectAll("circles_fre")
+                    .data(fre_open)
+                    .enter()
+                    .append("circle");
+
+        var roundLabels = svgb.selectAll("roundLabels")
+                    .data(rounds)
+                    .enter()
+                    .append("text");
+
+        var yearLabels = svgb.selectAll("yearLabels")
+                .data(years)
+                .enter()
+                .append("text");
+
+
+        lineh.attr("x1", gap)
+            .attr("y1", function(d) {
+                return d;
+            })
+            .attr("x2", w-gap)
+            .attr("y2", function(d) {
+                return d;
+            })
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+        linev.attr("x1", function(d) {
+            return d+gap;
+        })
+            .attr("y1", h-gap*1.25)
+            .attr("x2", function(d) {
+                return d+gap;
+            })
+            .attr("y2", gap/4)
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+
+
+
+        var frex = crossfilter(fre_open)
+
+        var frexPlayerDim = frex.dimension(function(d) {return d.name})
+
+        function freDots(filter){
+
+            var circles_fre = svgb.selectAll("circles_fre")
+                .append("circle");
+
+            frexPlayerDim.filterAll()
+
+            if (filter != null){
+                frexPlayerDim.filter(filter)
+            }
+
+
+        circles_fre
+            .data(frexPlayerDim.top(20))
+            .enter()
+            .append("circle")
+            .attr("cx", function(d, i) {
+                    return gap+(d.round-1 % 7)*colSpace;
+            })
+           .attr("cy", function(d, i){
+                if (d.year == 2006) {
+                   return rows[0]
+                }
+                else if (d.year == 2007) {
+                   return rows[1]
+                }
+                else if (d.year == 2008) {
+                   return rows[2]
+                }
+                else if (d.year == 2009) {
+                   return rows[3]
+                }
+                else if (d.year == 2010) {
+                   return rows[4]
+                }
+                else if (d.year == 2011) {
+                   return rows[5]
+                }
+                else if (d.year == 2012) {
+                   return rows[6]
+                }
+                else {
+                    return rows[7]
+                }
+           })
+            .attr("r", 10)
+            .attr("fill", function(d){
+                return d.color;
+                })
+            .on("mouseover", function(d) {
+                    d3.select(this)
+                        .style('fill', d.colorFill);
+                })
+            .on("mouseout", function(d) {
+                    d3.select(this)
+                        .style('fill', d.color);
+                })
+            .append("svg:title")
+                .text(function(d) { return d.x; });
+
+
+        $('svg circle').tipsy({
+            gravity: 'w',
+            html: true,
+            title: function() {
+              var d = this.__data__;
+              return d.name + ' ' + d.result;
+            }
+          });
+
+    }
+
+
+        roundLabels.attr("x", function(d, i){
+                return gap + i*colSpace;
+            })
+            .attr("y", h - gap)
+            .attr("text-anchor", "middle")
+            .style("font-size", "10px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        yearLabels.attr("x", gap/2 - 8)
+            .attr("y", function(d, i) {
+                return gap + i*rowSpace - 8;
+            })
+            .attr("text-anchor", "middle")
+            .style("font-size", "12px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        svgb.append("text")
+            .attr("x", (w / 2))
+            .attr("y", h - gap/2)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .style("font-family", "sans-serif")
+            .text("French Open");
+
+
+        //wimbledon svg
+
+        var svgc = d3.select("body")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", h);
+
+        var lineh = svgc.selectAll("lineh")
+                    .data(rows)
+                    .enter()
+                    .append("line");
+
+        var linev = svgc.selectAll("linev")
+                    .data(cols)
+                    .enter()
+                    .append("line");
+
+        var circles_wim = svgc.selectAll("circles_wim")
+                    .data(wimbledon)
+                    .enter()
+                    .append("circle");
+
+        var roundLabels = svgc.selectAll("roundLabels")
+                    .data(rounds)
+                    .enter()
+                    .append("text");
+
+        var yearLabels = svgc.selectAll("yearLabels")
+                .data(years)
+                .enter()
+                .append("text");
+
+
+        lineh.attr("x1", gap)
+            .attr("y1", function(d) {
+                return d;
+            })
+            .attr("x2", w-gap)
+            .attr("y2", function(d) {
+                return d;
+            })
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+        linev.attr("x1", function(d) {
+            return d+gap;
+        })
+            .attr("y1", h-gap*1.25)
+            .attr("x2", function(d) {
+                return d+gap;
+            })
+            .attr("y2", gap/4)
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+
+
+        var wimx = crossfilter(wimbledon)
+
+        var wimxPlayerDim = wimx.dimension(function(d) {return d.name})
+
+        function wimDots(filter){
+
+            var circles_wim = svgc.selectAll("circles_wim");
+
+            wimxPlayerDim.filterAll()
+
+            if (filter != null){
+                wimxPlayerDim.filter(filter)
+            }
+
+
+        circles_wim
+            .data(wimxPlayerDim.top(20))
+            .enter()
+            .append("circle")
+            .attr("cx", function(d, i) {
+                return gap+(d.round-1 % 7)*colSpace;
+            })
+           .attr("cy", function(d, i){
+                if (d.year == 2006) {
+                   return rows[0]
+                }
+                else if (d.year == 2007) {
+                   return rows[1]
+                }
+                else if (d.year == 2008) {
+                   return rows[2]
+                }
+                else if (d.year == 2009) {
+                   return rows[3]
+                }
+                else if (d.year == 2010) {
+                   return rows[4]
+                }
+                else if (d.year == 2011) {
+                   return rows[5]
+                }
+                else if (d.year == 2012) {
+                   return rows[6]
+                }
+                else {
+                    return rows[7]
+                }
+           })
+            .attr("r", 10)
+            .attr("fill", function(d){
+                return d.color;
+                })
+            .on("mouseover", function(d) {
+                    d3.select(this)
+                        .style('fill', d.colorFill);
+                })
+            .on("mouseout", function(d) {
+                    d3.select(this)
+                        .style('fill', d.color);
+                })
+            .append("svg:title")
+                .text(function(d) { return d.x; });
+
+
+        $('svg circle').tipsy({
+            gravity: 'w',
+            html: true,
+            title: function() {
+              var d = this.__data__;
+              return d.name + ' ' + d.result;
+            }
+          });
+    }
+
+
+        roundLabels.attr("x", function(d, i){
+                return gap + i*colSpace;
+            })
+            .attr("y", h - gap)
+            .attr("text-anchor", "middle")
+            .style("font-size", "10px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        yearLabels.attr("x", gap/2 - 8)
+            .attr("y", function(d, i) {
+                return gap + i*rowSpace - 8;
+            })
+            .attr("text-anchor", "middle")
+            .style("font-size", "12px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        svgc.append("text")
+            .attr("x", (w / 2))
+            .attr("y", h - gap/2)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .style("font-family", "sans-serif")
+            .text("Wimbledon");
+
+
+        //us open svg
+
+        var svgd = d3.select("body")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", h);
+
+        var lineh = svgd.selectAll("lineh")
+                    .data(rows)
+                    .enter()
+                    .append("line");
+
+        var linev = svgd.selectAll("linev")
+                    .data(cols)
+                    .enter()
+                    .append("line");
+
+        var circles_uso = svgd.selectAll("circles_uso")
+                    .data(us_open)
+                    .enter()
+                    .append("circle");
+
+        var roundLabels = svgd.selectAll("roundLabels")
+                    .data(rounds)
+                    .enter()
+                    .append("text");
+
+        var yearLabels = svgd.selectAll("yearLabels")
+                .data(years)
+                .enter()
+                .append("text");
+
+
+        lineh.attr("x1", gap)
+            .attr("y1", function(d) {
+                return d;
+            })
+            .attr("x2", w-gap)
+            .attr("y2", function(d) {
+                return d;
+            })
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+        linev.attr("x1", function(d) {
+            return d+gap;
+        })
+            .attr("y1", h-gap*1.25)
+            .attr("x2", function(d) {
+                return d+gap;
+            })
+            .attr("y2", gap/4)
+            .attr("stroke", "rgba(192, 192, 192, 0.5)")
+            .attr("stroke-width", 2 + "px");
+
+
+
+        var usox = crossfilter(us_open)
+
+        var usoxPlayerDim = usox.dimension(function(d) {return d.name})
+
+        function usoDots(filter){
+
+            var circles_uso = svgd.selectAll("circles_uso");
+
+            usoxPlayerDim.filterAll()
+
+            if (filter != null){
+                usoxPlayerDim.filter(filter)
+            }
+
+
+        circles_uso
+            .data(usoxPlayerDim.top(20))
+            .enter()
+            .append("circle")
+            .attr("cx", function(d, i) {
+                return gap+(d.round-1 % 7)*colSpace;
+            })
+           .attr("cy", function(d, i){
+                if (d.year == 2006) {
+                   return rows[0]
+                }
+                else if (d.year == 2007) {
+                   return rows[1]
+                }
+                else if (d.year == 2008) {
+                   return rows[2]
+                }
+                else if (d.year == 2009) {
+                   return rows[3]
+                }
+                else if (d.year == 2010) {
+                   return rows[4]
+                }
+                else if (d.year == 2011) {
+                   return rows[5]
+                }
+                else if (d.year == 2012) {
+                   return rows[6]
+                }
+                else {
+                    return rows[7]
+                }
+           })
+            .attr("r", 10)
+            .attr("fill", function(d){
+                return d.color;
+                })
+            .on("mouseover", function(d) {
+                    d3.select(this)
+                        .style('fill', d.colorFill);
+                })
+            .on("mouseout", function(d) {
+                    d3.select(this)
+                        .style('fill', d.color);
+                })
+            .append("svg:title")
+                .text(function(d) { return d.x; });
+
+
+        $('svg circle').tipsy({
+            gravity: 'w',
+            html: true,
+            title: function() {
+              var d = this.__data__;
+              return d.name + ' ' + d.result;
+            }
+          });
+
+    }
+
+        roundLabels.attr("x", function(d, i){
+                return gap + i*colSpace;
+            })
+            .attr("y", h - gap)
+            .attr("text-anchor", "middle")
+            .style("font-size", "10px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        yearLabels.attr("x", gap/2 - 8)
+            .attr("y", function(d, i) {
+                return gap + i*rowSpace - 8;
+            })
+            .attr("text-anchor", "middle")
+            .style("font-size", "12px")
+            .style("font-family", "sans-serif")
+            .text(function(d){
+                return d;
+            });
+
+
+        svgd.append("text")
+            .attr("x", (w / 2))
+            .attr("y", h - gap/2)
+            .attr("text-anchor", "middle")
+            .style("font-size", "16px")
+            .style("font-family", "sans-serif")
+            .text("US Open");
+
+
+
+        // make filter buttons
+
+        var buttonNames = ["R. Nadal", "R. Federer", "N. Djokovic", "refresh"]
+
+        var svgf = d3.select('body')
+            .append('svg')
+            .attr('width', 1)
+            .attr('height', 1);
+
+        d3.select('button')
+            .data(buttonNames)
+            .enter()
+            .append("input")
+            .attr("type","button")
+            .attr("class","button")
+            .attr("value", function(d) {
+                return d;} )
+            .attr("text-anchor", "middle")
+            .style("font-size", "20px")
+            .style("font-family", "sans-serif")
+            .on("click", function(d){
+            if (d=="refresh"){
+
+                // remove all dots
+                svga.selectAll("circle").remove()
+                svgb.selectAll("circle").remove()
+                svgc.selectAll("circle").remove()
+                svgd.selectAll("circle").remove()
+
+                // make dots without any filter
+                ausDots(null)
+                freDots(null)
+                wimDots(null)
+                usoDots(null)
+              }
+            else {
+
+                // remove all dots
+                svga.selectAll("circle").remove()
+                svgb.selectAll("circle").remove()
+                svgc.selectAll("circle").remove()
+                svgd.selectAll("circle").remove()
+
+                // make dots with filter based on name
+                ausDots(d)
+                freDots(d)
+                wimDots(d)
+                usoDots(d)
+            }
+            }
+          );
+
+        function init(){
+            ausDots(null)
+            freDots(null)
+            wimDots(null)
+            usoDots(null)
+        }
+
+          init()
+
+
+        </script>
+
+    </body>
+
+
+</html>
