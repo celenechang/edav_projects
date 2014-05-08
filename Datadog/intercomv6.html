@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+  <h1>Datadog user data</h1>
+
+<div class = "bars" id="chart-bar-users"></div>
+
+<div class = "bars" id="chart-bar-sessions"></div>
+<!--<div class = "scatter" id="chart-scatter-sessions"></div>-->
+
+<div class = "bars" id="chart-bar-signups"></div>
+
+<div class = "pies" id="chart-pie-continents"></div>
+
+<div class="pies" id="chart-pie-created"></div>
+<style>
+
+.pies {
+  margin-left: 50px;
+  margin-right: 20px;
+}
+
+.header {
+  margin-right: 100px;
+}
+
+h1 {
+  font-size: 20px;
+  font-family: sans-serif;
+}
+
+.bars text{
+    font-size: 10px;
+    font-family: sans-serif;
+}
+
+.bars path {
+    cursor: pointer;
+    stroke: purple;
+    fill: purple;
+    stroke-width: 1;
+}
+
+.pies path {
+    cursor: pointer;
+    stroke: black;
+    stroke-width: 0;
+}
+
+.pies text {
+    font-size: 5px;
+    font-family: sans-serif;
+    fill: white;
+    cursor: pointer;
+}
+
+.pies .pie-slice.external{
+    fill: black;
+}
+
+.graticule {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: .5;
+  stroke-width: .5px;
+}
+
+.land {
+  fill: #551a8b;
+}
+
+.boundary {
+  fill: none;
+  stroke: #000;
+  stroke-width: .5px;
+}
+
+</style>
+</head>
+
+<body>
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.6.2.min.js"></script>
+<script type="text/javascript" src="../jquery.tipsy.js"></script>
+<script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+<script type="text/javascript" src="../dc.js-1.6.0/dc.min.js"></script>
+<script type="text/javascript" src="../crossfilter-1.3.7/crossfilter.min.js"></script>
+
+<script src="intercom_users.js" type="text/javascript"></script>
+<script src="recent_users.js" type="text/javascript"></script>
+
+<link href="../tipsy.css" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" type="text/css" href="../dc.js-1.6.0/dc.css" media="screen" />
+
+
+<script>
+
+// MAKE MAP
+
+var width = 1000,
+    height = 1000;
+
+var svg = d3.select("body")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height-270);
+
+var projection = d3.geo.mercator()
+    .scale((width + 1) / 2 / Math.PI)
+    .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection)
+    .pointRadius(0.1);
+
+var graticule = d3.geo.graticule();
+
+function init() {
+  makeMap()
+  makeDots()
+}
+
+function makeMap(){
+
+projection.scale((width + 1) / 2 / Math.PI)
+    .translate([width / 2, height / 2]);
+
+path.projection(projection)
+    .pointRadius(0.1);
+
+// makes gray background
+svg.append("rect")
+    .attr("width", "100%")
+    .attr("height", "100%")
+    .attr("fill", "#b2b2b2");
+
+// draws graticule
+svg.append("path")
+    .datum(graticule)
+    .attr("class", "graticule");
+
+
+d3.json("world-50m.json", function(error, world) {
+  // draws the map
+  svg.insert("path", ".graticule")
+      .datum(topojson.feature(world, world.objects.land))
+      .attr("class", "land")
+      .attr("d", path);
+
+  // draws map boundaries
+  svg.insert("path", ".graticule")
+      .datum(topojson.mesh(world, world.objects.countries, function(a, b) { return a !== b; }))
+      .attr("class", "boundary")
+      .attr("d", path);
+});
+
+d3.select(self.frameElement).style("height", height + "px");
+
+}
+
+recent_users.forEach(function(d){
+//intercom_users.forEach(function(d){
+  if (d.created_at > 1325376000 && d.created_at < 1356998400) {d.created_year = 2012;}
+  else if (d.created_at < 1388534400) {d.created_year = 2013;}
+  else /*(d.created_at > 1388534400)*/ {d.created_year = 2014;}
+});
+
+// 1388534400
+
+//var ndx = crossfilter(intercom_users);
+var ndx = crossfilter(recent_users);
+
+
+// MANIPULATE DATA
+
+// id dimention
+var idDim = ndx.dimension(function(d) {if (d.intercom_id != null) {return d.intercom_id;}});
+
+// location dimension
+var longDim = ndx.dimension(function(d) {if (d.location_data != null) {return d.location_data.longitude;}});
+var latDim = ndx.dimension(function(d) {if (d.location_data != null) {return d.location_data.latitude;}});
+
+// continent_code dimension
+var continentDim = ndx.dimension(function(d) { if (d.location_data != null) {return d.location_data.continent_code;} else {return ""; }});
+
+// timezone dimension
+var tzDim = ndx.dimension(function(d) { if (d.location_data != null) {return d.location_data.timezone;} else {return ""; } });
+
+
+// session_count group dimension
+var sessionDim = ndx.dimension(function(d) {return d.session_count;});
+var sessionsDim = sessionDim.group(function(d) {return Math.floor(d/100)*10;});
+
+
+// last_impression_at group dimension (by ?)
+var lastDim = ndx.dimension(function(d) {return d.last_impression_at;});
+var lastMin = lastDim.bottom(1)[0].last_impression_at;
+
+var lastsDim = lastDim.group(function(d) {return Math.floor((d - lastMin)/12); }); // this is a hack; need to find a better way to have monthly bins
+
+
+// created_at group dimension (by month)
+var createdDim = ndx.dimension(function(d) {return d.created_at;});
+var createdMin = createdDim.bottom(1)[0].created_at;
+var createdMax = createdDim.top(1)[0].created_at;
+
+var createdYearDim = ndx.dimension(function(d) {return d.created_year;});
+
+// company_ids dimension
+var orgDim = ndx.dimension(function(d) {if (d.company_ids != null) {return d.company_ids[0];} else {return ""} } );
+
+
+// "last_seen_user_agent":"Mozilla\/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/33.0.1750.152 Safari\/537.36"
+
+
+
+// DRAW DOTS
+function makeDots(type, filter){
+
+
+  var dots = svg.selectAll("dots")
+            .append("circle");
+
+  createdDim.filterAll()
+
+  if (filter != null && filter === parseInt(filter)){
+    console.log(filter)
+    createdDim.filter([filter, filter + 31536000])
+  }
+
+  var users = createdDim.top(10000)
+
+  dots.data(users) // can also use 'data'
+      .enter().append("circle", ".pin")
+      .attr("r", 2)
+      .attr("transform", function(d) {
+        if (d.location_data == null ) {
+          return
+        }
+        return "translate(" + projection([
+          d.location_data.longitude,
+          d.location_data.latitude
+        ]) + ")"
+      })
+      .attr("fill", function(d){
+        if (d.session_count > 500){
+          return "red"
+        }
+        else {
+          return "white"
+        }
+        })
+      .on("mouseover", function(d) {
+            d3.select(this)
+                .style('fill', "yellow");
+        })
+      .on("mouseout", function(d) {
+              d3.select(this)
+                    .style('fill', "white")
+            }
+        )
+      .append("svg:title")
+          .text(function(d) { return d.x; });
+
+  $('svg circle').tipsy({
+      gravity: 's',
+      html: true,
+      title: function() {
+        var d = this.__data__;
+        if (d.location_data.city_name == ""){
+            return 'org: ' + d.company_ids + ', sessions: ' + d.session_count;
+      }
+        else {
+        return d.location_data.city_name + ', ' + d.location_data.country_code + ' org: ' + d.company_ids + ', sessions: ' + d.session_count;
+          }
+    }
+    });
+};
+
+// BUTTONS
+/*var continentButtonNames = ["North America", "South America", "Europe", "Asia", "Africa", "Australia", "refresh"]
+
+var continentButtons = d3.select("body");
+
+continentButtons
+  .selectAll("input")
+  .data(continentButtonNames)
+  .enter()
+  .append("input")
+  .attr("type","button")
+  .attr("class","button")
+  .attr("value", function(d) {return d;} )
+  .on("click", function(d){
+    if (d=="North America") {
+      updateDots("NA")
+    }
+    else if (d=="South America") {
+      updateDots("SA")
+    }
+    else if (d=="Europe") {
+      updateDots("EU")
+    }
+    else if (d=="Asia") {
+      updateDots("AS")
+    }
+    else if (d=="Africa") {
+      updateDots("AF")
+    }
+    else if (d=="Australia"){
+      updateDots("OC")
+    }
+    else if (d=="refresh"){
+      location.reload();
+    }
+  });*/
+
+       // make filter buttons
+
+
+  var buttonNames = ["2012", "2013", "2014", "refresh"]
+  var svgf = d3.select('body')
+      .append('svg')
+      .attr('width', 1)
+      .attr('height', 1);
+
+  d3.select('button')
+      .data(buttonNames)
+      .enter()
+      .append("input")
+      .attr("type","button")
+      .attr("class","button")
+      .attr("value", function(d) {
+          return d;} )
+      .attr("text-anchor", "middle")
+      .style("font-size", "20px")
+      .style("font-family", "sans-serif")
+      .on("click", function(d){
+          if (d=="2012") {
+      updateDots("created_at", 1325376000)
+    }
+    else if (d=="2013") {
+      updateDots("created_at", 1356998400)
+    }
+    else if (d=="2014") {
+      updateDots("created_at", 1388534400)
+    }
+    else if (d=="refresh"){
+      updateDots("created_at", null)
+    }
+  });
+
+
+
+function updateDots(type, filter) {
+  svg.selectAll("circle").remove()
+  //d3.select("svg")
+    //.remove()
+  makeDots(type, filter);
+}
+
+
+  var users = orgDim.group().reduceCount(function(d) {return d.company_ids[0];});
+
+  var sessions = orgDim.group().reduceSum(function(d) {return d.session_count;});
+
+  var createdsDim = createdDim.group(function(d) {return Math.floor(d/604800) * 604800; }); // per week
+
+  var continents = continentDim.group().reduceCount(function(d) {return d.continent_code;})
+
+  var createdsYear = createdYearDim.group().reduceCount(function(d) {return d.created_year;})
+
+  var timezones = tzDim.group().reduceCount(function(d) {return d.time_zone;})
+
+  // users by org
+  var usersBar = dc.barChart("#chart-bar-users")
+    .width(500).height(200)
+    .dimension(orgDim)
+    .group(users)
+    .x(d3.scale.linear().domain([2,10000]))
+    .brushOn(false)
+    .yAxisLabel("Users")
+    .xAxisLabel("org ID")
+    .colors(["purple"]);
+
+  // sessions by org
+  var sessionsBar = dc.barChart("#chart-bar-sessions")
+    .width(500).height(200)
+    .dimension(orgDim)
+    .group(sessions)
+    .x(d3.scale.linear().domain([2,10000]))
+    .brushOn(false)
+    .yAxisLabel("Sessions")
+    .xAxisLabel("org ID")
+    .colors(["green"])
+    .yAxis()
+    .ticks(5);
+
+
+  // signups BarChart
+  var signupsBarChart = dc.barChart("#chart-bar-signups")
+    .width(500).height(200)
+    .dimension(createdDim)
+    .group(createdsDim)
+    //.x(d3.time.scale().domain([0,(createdMax-createdMin)/12]))
+    .x(d3.scale.linear().domain([createdMin, createdMax]))
+    .brushOn(false)
+    .yAxisLabel("# signups")
+    .xAxisLabel("UTC time (bin size = 1 week)")
+    .xAxis()
+    .ticks(4);
+
+  // continent pie graph
+  var continentPie = dc.pieChart("#chart-pie-continents")
+    .width(150).height(150)
+    .dimension(continentDim)
+    .group(continents)
+    .innerRadius(25);
+
+  // created pie graph
+  var createdPie = dc.pieChart("#chart-pie-created")
+    .width(150).height(150)
+    .dimension(createdYearDim)
+    .group(createdsYear)
+    .innerRadius(25);
+
+
+init();
+
+dc.renderAll()
+
+</script>
