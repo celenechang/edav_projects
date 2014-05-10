@@ -16,21 +16,21 @@ This was my opportunity to use data from my workplace (that is, relevant and yet
 If you clone the repo, everything including the data are self-contained.
 
 ### Datadog
-`requests_oauthlib`
-`simplejson`
-`pandas`
-`python-intercom`
-`requests`
-`json`
-`time`
+`requests_oauthlib`<br/>
+`simplejson`<br/>
+`pandas`<br/>
+`python-intercom`<br/>
+`requests`<br/>
+`json`<br/>
+`time`<br/>
 
 ## Tips
 
 ### Run server locally
-Use `SimpleHTTPServer` to serve locally:
+Use `SimpleHTTPServer` to serve locally:<br/>
 `$ python -m SimpleHTTPServer 9999`
 
 ### Run Python code to get data in ipython notebook
-This saves your workspace so you don't have to run costly functions everytime you get back to your project
+This saves your workspace so you don't have to run costly functions everytime you get back to your project<br/>
 `$ ipython notebook`
 
