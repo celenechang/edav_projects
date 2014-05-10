@@ -16,7 +16,7 @@ This was my opportunity to use data from my workplace (that is, relevant and yet
 If you clone the repo, everything including the data are self-contained.
 
 ### Datadog
-Data were extracted from [Desk](http://www.desk.com) and [Intercom](http://www.intercom.io).
+Data were extracted from [Desk](http://www.desk.com) and [Intercom](http://www.intercom.io).<br/>
 `requests_oauthlib`<br/>
 `simplejson`<br/>
 `pandas`<br/>
